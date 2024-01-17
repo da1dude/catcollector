@@ -1,6 +1,11 @@
 from django.shortcuts import render
+# importing our class based views also known as CBV's
+from django.views.generic.edit import CreateView, UpdateView, DeleteView
+
 
 from .models import Cat
+# Import the FeedingForm
+from .forms import FeedingForm
 
 #used to build initial view
 # cats = [
@@ -31,6 +36,47 @@ def cats_index(request):
 
 #detail view - shows 1 cat at '/cats/:id'
 def cats_detail(request, cat_id):
-    #find one cat wiht its id
     cat = Cat.objects.get(id=cat_id)
-    return render(request, 'cats/detail.html', { 'cat': cat })
+    # instantiate FeedingForm to be rendered in the template
+    feeding_form = FeedingForm()
+    return render(request, 'cats/detail.html', {
+        # include the cat and feeding_form in the context
+        'cat': cat, 'feeding_form': feeding_form
+    })
+
+# inherit from the CBV - CreateView, to make our cats create view
+class CatCreate(CreateView):
+    # tell the createview to use the Cat model for all its functionality
+    model = Cat
+    # this view creates a form, so we need to identify which fields to use
+    fields = '__all__'
+    # we can add other options inside this view
+    # success_url = '/cats/{cat_id}'
+
+# Update View - extends the UpdateView class
+class CatUpdate(UpdateView):
+    model = Cat
+    # let's make it so you can't rename a cat
+    # we could simply say fields = '__all__', or we can customize like this:
+    fields = ['breed', 'description', 'age']
+
+# Delete View - extends DeleteView
+class CatDelete(DeleteView):
+    model = Cat
+
+    success_url = '/cats'
+
+#Feeding and relationship view functions
+#this is to add a feeding to a cat
+def add_feeding(request, cat_id):
+    # create a ModelForm instance using the data in request.POST
+    form = FeedingForm(request.POST)
+    # validate the form
+    #django give us a built in function for that
+    if form.is_valid():
+        # don't save the form to the db until it
+        # has the cat_id assigned
+        new_feeding = form.save(commit=False)
+        new_feeding.cat_id = cat_id
+        new_feeding.save()
+    return redirect('detail', cat_id=cat_id)
